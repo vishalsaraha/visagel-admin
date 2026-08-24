@@ -18,23 +18,18 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  TablePagination,
 } from '@mui/material';
 import {
   HelpCircle,
   ChevronDown,
   Mail,
   Phone,
-  MessageSquare,
   LifeBuoy,
-  FileText,
-  Smartphone,
-  Shield,
-  CheckCircle,
-  ExternalLink,
   Send,
   Building2,
-  Video,
 } from 'lucide-react';
+import { Organization, OrgAdmin } from '@/types';
 
 export default function SupportPage() {
   const { organizations } = useAdminData();
@@ -43,12 +38,24 @@ export default function SupportPage() {
   const [ticketMessage, setTicketMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  // Pagination for Client Directory
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(6);
+
   const handleSubmitTicket = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setTicketSubject('');
     setTicketMessage('');
   };
+
+  const allAdmins = organizations.flatMap((org: Organization) =>
+    org.admins.map((admin: OrgAdmin) => ({
+      ...admin,
+      orgName: org.name,
+      orgId: org.orgId,
+    }))
+  );
 
   const faqs = [
     {
@@ -57,11 +64,11 @@ export default function SupportPage() {
     },
     {
       q: 'What happens when an employee forgets to clock in or out?',
-      a: 'Super Admins and HR Managers can navigate to the Employee Directory or App Data Hub and click "Punch" next to the employee record to log a manual verified entry.',
+      a: 'Super Admins and HR Managers can navigate to the Employee Directory or App Data Hub and log a manual verified entry.',
     },
     {
       q: 'How are tenant subscriptions renewed or upgraded?',
-      a: 'Under the "Plans & Payments" section, select "Adjust Plan" on any organization to switch between Starter, Growth, Enterprise, or Unlimited, with instant quota allocation for faces and terminals.',
+      a: 'Under the "Subscriptions" section, select "Adjust Plan" on any organization to switch between Starter, Growth, Enterprise, or Unlimited, with instant quota allocation for faces and terminals.',
     },
     {
       q: 'What should we do if an iPad terminal shows "Sync Offline"?',
@@ -93,7 +100,7 @@ export default function SupportPage() {
             />
           </Box>
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            Dedicated technical support, hardware kiosk guides, ticket submission, and HR assistance for all employees & clients.
+            Dedicated technical support, hardware kiosk guides, ticket submission, and HR assistance for all clients.
           </Typography>
         </Box>
       </Box>
@@ -164,69 +171,84 @@ export default function SupportPage() {
               </Box>
             </Box>
             <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
-              All 4 kiosk terminals at Branzept HQ active with 99.98% facial recognition confidence.
+              All kiosk terminals active with 99.98% facial recognition confidence.
             </Typography>
           </CardContent>
         </Card>
       </Box>
 
-      {/* Client / Org Admin Directory */}
+      {/* Client / Org Admin Directory with Configurable Pagination */}
       <Card>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               Client Directory & Contact
             </Typography>
-            <Chip label={`${organizations.length} Clients`} size="small" sx={{ bgcolor: '#F1F5F9', color: '#475569', fontWeight: 600 }} />
+            <Chip label={`${allAdmins.length} Client Admins`} size="small" sx={{ bgcolor: '#F1F5F9', color: '#475569', fontWeight: 600 }} />
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-            Connect with Organization Admins directly via Email, Phone, or Video Call.
+            Connect with Organization Admins directly via Email or Phone.
           </Typography>
 
           <Grid container spacing={2}>
-            {organizations.flatMap((org) => 
-              org.admins.map((admin) => (
-                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={admin.id}>
-                  <Box sx={{ p: 2, border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F8FAFC' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {admin.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Building2 size={12} /> {org.name}
-                        </Typography>
-                      </Box>
-                      <Chip label={admin.role === 'SUPER_ADMIN' ? 'Admin' : 'HR'} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }} />
+            {allAdmins.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((admin) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={admin.id}>
+                <Box sx={{ p: 2, border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F8FAFC' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {admin.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Building2 size={12} /> {admin.orgName}
+                      </Typography>
                     </Box>
-                    <Divider sx={{ my: 1.5 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                      <Tooltip title="Send Email">
-                        <IconButton size="small" sx={{ bgcolor: '#FFF7ED', color: '#FF6900', '&:hover': { bgcolor: '#FED7AA' } }} onClick={() => window.location.href = `mailto:${admin.email}`}>
-                          <Mail size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Call">
-                        <IconButton size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', '&:hover': { bgcolor: '#BFDBFE' } }} onClick={() => window.location.href = `tel:${admin.phone}`}>
-                          <Phone size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="WhatsApp / Chat">
-                        <IconButton size="small" sx={{ bgcolor: '#F0FDF4', color: '#16A34A', '&:hover': { bgcolor: '#BBF7D0' } }}>
-                          <MessageSquare size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Start Video Call">
-                        <IconButton size="small" sx={{ bgcolor: '#F3F4F6', color: '#4B5563', '&:hover': { bgcolor: '#E5E7EB' } }}>
-                          <Video size={16} />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
+                    <Chip label={admin.role === 'SUPER_ADMIN' ? 'Admin' : 'HR'} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }} />
                   </Box>
-                </Grid>
-              ))
-            ).slice(0, 6)}
+                  <Divider sx={{ my: 1.5 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5 }}>
+                    <Tooltip title="Send Email">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Mail size={14} />}
+                        onClick={() => window.location.href = `mailto:${admin.email}`}
+                        sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                      >
+                        Email
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Call Phone">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        startIcon={<Phone size={14} />}
+                        onClick={() => window.location.href = `tel:${admin.phone}`}
+                        sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                      >
+                        Call
+                      </Button>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              </Grid>
+            ))}
           </Grid>
+
+          <TablePagination
+            component="div"
+            count={allAdmins.length}
+            page={page}
+            onPageChange={(_e, p) => setPage(p)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[6, 12, 24, 50, 100]}
+            sx={{ mt: 2 }}
+          />
         </CardContent>
       </Card>
 
@@ -245,7 +267,7 @@ export default function SupportPage() {
               Submit Support Ticket
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-              Have an issue with biometric face syncing, employees roster, or hardware?
+              Have an issue with biometric face syncing, roster, or hardware?
             </Typography>
 
             <form onSubmit={handleSubmitTicket}>
@@ -300,7 +322,7 @@ export default function SupportPage() {
               Frequently Asked Questions (FAQ)
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-              Quick answers to common questions about employee management and kiosk workflows
+              Quick answers to common questions about kiosk workflows
             </Typography>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

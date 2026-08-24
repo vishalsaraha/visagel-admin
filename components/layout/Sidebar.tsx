@@ -33,7 +33,6 @@ interface SidebarProps {
 
 const MENU_ITEMS = [
   { title: 'Overview', path: '/', icon: <LayoutDashboard size={18} /> },
-  { title: 'Employees', path: '/employees', icon: <Users size={18} /> },
   { title: 'Organizations', path: '/organizations', icon: <Building2 size={18} /> },
   { title: 'Subscriptions', path: '/subscriptions', icon: <CreditCard size={18} /> },
   { title: 'Data Hub', path: '/data-inspector', icon: <Database size={18} /> },

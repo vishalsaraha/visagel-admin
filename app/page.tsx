@@ -14,23 +14,40 @@ import {
   TableHead,
   TableRow,
   Avatar,
+  Tooltip,
+  TablePagination,
 } from '@mui/material';
 import {
   Building2,
-  Users,
+  Smartphone,
   CreditCard,
   Plus,
   Clock,
+  Activity,
+  ChevronRight,
+  Database,
+  Server,
+  HardDrive,
 } from 'lucide-react';
 import { useAdminData } from '@/context/AdminDataContext';
 import { useRouter } from 'next/navigation';
 import { OrgModal } from '@/components/organizations/OrgModal';
 import { PlanBadge, PaymentStatusBadge } from '@/components/organizations/PlanStatusBadge';
+import { BackendHealthModal } from '@/components/dashboard/BackendHealthModal';
+import { KioskManagementModal } from '@/components/kiosks/KioskManagementModal';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { stats, organizations } = useAdminData();
+  const { stats, organizations, kiosks } = useAdminData();
   const [openAddOrgModal, setOpenAddOrgModal] = useState(false);
+  const [openHealthModal, setOpenHealthModal] = useState(false);
+  const [openKioskModal, setOpenKioskModal] = useState(false);
+
+  // Table pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const activeKiosks = stats.activeKiosksCount || kiosks.filter(k => k.status === 'ONLINE').length || 10;
 
   const kpiCards = [
     {
@@ -41,11 +58,11 @@ export default function DashboardPage() {
       action: () => router.push('/organizations'),
     },
     {
-      title: 'Registered Employees',
-      value: stats.totalEnrolledEmployees,
-      subtitle: 'Enrolled across all companies',
-      icon: <Users size={20} color="#FF6900" />,
-      action: () => router.push('/employees'),
+      title: 'Active Kiosk Network',
+      value: `${activeKiosks} Terminals`,
+      subtitle: `${organizations.length} client orgs connected`,
+      icon: <Smartphone size={20} color="#FF6900" />,
+      action: () => setOpenKioskModal(true),
     },
     {
       title: 'Biometric Punches Today',
@@ -75,7 +92,7 @@ export default function DashboardPage() {
         zIndex: 0,
       }
     }}>
-      {/* Top Header */}
+      {/* 1. Top Header */}
       <Box
         sx={{
           display: 'flex',
@@ -97,16 +114,17 @@ export default function DashboardPage() {
             />
           </Box>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Manage Branzept employees, client organizations, face recognition kiosks, subscription quotas, and support requests.
+            Manage client organizations, face recognition kiosks, subscription quotas, and support requests.
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1.5 }}>
           <Button
             variant="outlined"
-            onClick={() => router.push('/employees')}
+            startIcon={<Smartphone size={16} />}
+            onClick={() => setOpenKioskModal(true)}
           >
-            Staff
+            Kiosk Suite
           </Button>
           <Button
             variant="contained"
@@ -118,7 +136,76 @@ export default function DashboardPage() {
         </Box>
       </Box>
 
-      {/* KPI Cards Grid */}
+      {/* 2. BACKEND STATUS (MOVED TO TOP OF DASHBOARD OVERVIEW AS REQUESTED) */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
+          gap: 2,
+        }}
+      >
+        {[
+          { label: 'Database', value: 'MongoDB', sub: 'AWS Node-1 Online', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+          { label: 'API Server', value: 'Node.js/REST', sub: 'All endpoints healthy', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+          { label: 'Kiosk Network', value: `${activeKiosks} Active`, sub: `${organizations.length} orgs connected`, color: '#FF6900', bg: '#FFF7ED', border: '#FED7AA' },
+          { label: 'Server Uptime', value: '99.9%', sub: 'Last checked: just now', color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+        ].map((item) => (
+          <Tooltip key={item.label} title="Click to view detailed backend health diagnostics">
+            <Card
+              onClick={() => setOpenHealthModal(true)}
+              sx={{
+                cursor: 'pointer',
+                transition: 'all 0.18s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.06)',
+                  borderColor: item.border,
+                },
+              }}
+            >
+              <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 1.5,
+                    bgcolor: item.bg,
+                    border: `1px solid ${item.border}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      bgcolor: item.color,
+                      boxShadow: `0 0 0 3px ${item.border}`,
+                      animation: 'pulse 2s infinite',
+                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: item.color }}>
+                    {item.value}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
+                    {item.sub}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Tooltip>
+        ))}
+      </Box>
+
+      {/* 3. KPI Cards Grid */}
       <Box
         sx={{
           display: 'grid',
@@ -169,7 +256,7 @@ export default function DashboardPage() {
         ))}
       </Box>
 
-      {/* Main Sections: Recent Organizations & Quick Punch Activity */}
+      {/* 4. Main Sections: Organizations Directory & Active Sessions */}
       <Box
         sx={{
           display: 'grid',
@@ -211,7 +298,9 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {organizations.slice(0, 5).map((org) => (
+                  {organizations
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((org: any) => (
                     <TableRow key={org.id} hover>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -247,8 +336,22 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              component="div"
+              count={organizations.length}
+              page={page}
+              onPageChange={(_e, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            />
           </CardContent>
-        </Card>        {/* Right: Active Sessions */}
+        </Card>
+
+        {/* Right: Active Sessions */}
         <Card>
           <CardContent sx={{ p: 2.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -335,63 +438,10 @@ export default function DashboardPage() {
         </Card>
       </Box>
 
-      {/* System Info Row */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
-          gap: 2,
-        }}
-      >
-        {[
-          { label: 'Database', value: 'MongoDB', sub: 'AWS Node-1 Online', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-          { label: 'API Server', value: 'Node.js/REST', sub: 'All endpoints healthy', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-          { label: 'Kiosk Network', value: `${organizations.reduce((a, o) => a + o.activeDeviceCount, 0)} Active`, sub: `${organizations.length} orgs connected`, color: '#FF6900', bg: '#FFF7ED', border: '#FED7AA' },
-          { label: 'Server Uptime', value: '99.9%', sub: 'Last checked: just now', color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 1.5,
-                  bgcolor: item.bg,
-                  border: `1px solid ${item.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    bgcolor: item.color,
-                    boxShadow: `0 0 0 3px ${item.border}`,
-                  }}
-                />
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {item.label}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: item.color }}>
-                  {item.value}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
-                  {item.sub}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
-
-      {/* Modal for creating Organization */}
+      {/* Modals */}
       <OrgModal open={openAddOrgModal} onClose={() => setOpenAddOrgModal(false)} />
+      <BackendHealthModal open={openHealthModal} onClose={() => setOpenHealthModal(false)} />
+      <KioskManagementModal open={openKioskModal} onClose={() => setOpenKioskModal(false)} />
     </Box>
   );
 }

@@ -125,6 +125,32 @@ export interface PaymentInvoice {
   transactionRef?: string;
 }
 
+export interface KioskDevice {
+  id: string;
+  deviceId: string; // e.g. 'KSK-BRAN-01'
+  name: string; // e.g. 'Main Gate iPad Air 5'
+  orgId: string;
+  orgName: string;
+  location: string;
+  deviceType: 'iPad' | 'Android Tablet' | 'Dedicated Terminal';
+  ipAddress: string;
+  status: 'ONLINE' | 'OFFLINE' | 'SYNCING';
+  lastHeartbeat: string;
+  faceEngineVersion: string;
+  activeFaceModelCount: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actor: string;
+  actorRole: string;
+  action: string;
+  details: string;
+  targetOrgId?: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+}
+
 export interface DashboardStats {
   totalOrganizations: number;
   activeOrganizations: number;
@@ -133,4 +159,6 @@ export interface DashboardStats {
   totalRevenueMonthly: number;
   pendingPaymentsCount: number;
   overduePaymentsCount: number;
+  activeKiosksCount?: number;
 }
+

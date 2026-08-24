@@ -17,7 +17,7 @@ import {
   InputAdornment,
 } from '@mui/material';
 import { Building2, Shield, User, Mail, Phone, MapPin, Key } from 'lucide-react';
-import { OrgPlanTier, PaymentStatus, BillingCycle } from '@/types';
+import { OrgPlanTier, PaymentStatus, BillingCycle, PlanConfig } from '@/types';
 import { useAdminData } from '@/context/AdminDataContext';
 
 interface OrgModalProps {
@@ -66,7 +66,7 @@ export const OrgModal: React.FC<OrgModalProps> = ({ open, onClose }) => {
     e.preventDefault();
     if (!name || !contactEmail || !orgId) return;
 
-    const selectedPlan = plans.find((p) => p.tier === plan) || plans[0];
+    const selectedPlan = plans.find((p: PlanConfig) => p.tier === plan) || plans[0];
     const price = billingCycle === 'LIFETIME' ? selectedPlan.pricePerMonth * 12 * 5 : billingCycle === 'ANNUAL' ? selectedPlan.pricePerMonth * 12 * 0.8 : selectedPlan.pricePerMonth;
 
     const today = new Date().toISOString().split('T')[0];

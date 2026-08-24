@@ -11,6 +11,8 @@ import {
   DashboardStats,
   OrgPlanTier,
   PaymentStatus,
+  KioskDevice,
+  AuditLogEntry,
 } from '@/types';
 import {
   INITIAL_ORGANIZATIONS,
@@ -19,6 +21,8 @@ import {
   INITIAL_EMPLOYEES,
   INITIAL_SHIFTS,
   INITIAL_INVOICES,
+  INITIAL_KIOSKS,
+  INITIAL_AUDIT_LOGS,
 } from './initialData';
 
 interface AdminDataContextType {
@@ -28,6 +32,8 @@ interface AdminDataContextType {
   employees: EnrolledEmployee[];
   shifts: ShiftEntry[];
   invoices: PaymentInvoice[];
+  kiosks: KioskDevice[];
+  auditLogs: AuditLogEntry[];
   stats: DashboardStats;
   
   // Organization operations
@@ -46,6 +52,13 @@ interface AdminDataContextType {
   recordPaymentInvoice: (invoice: Omit<PaymentInvoice, 'id' | 'invoiceNumber'>) => Promise<boolean>;
   updateInvoiceStatus: (invoiceId: string, status: PaymentStatus) => Promise<boolean>;
 
+  // Kiosk Terminal operations
+  addKioskDevice: (kiosk: Omit<KioskDevice, 'id'>) => Promise<boolean>;
+  deleteKioskDevice: (id: string) => Promise<boolean>;
+
+  // Audit Logs
+  addAuditLog: (log: Omit<AuditLogEntry, 'id' | 'timestamp'>) => Promise<boolean>;
+
   // App Data operations
   addEmployeeRecord: (emp: Omit<EnrolledEmployee, 'id'>) => Promise<boolean>;
   deleteEmployeeRecord: (id: string) => Promise<boolean>;
@@ -62,6 +75,8 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [employees, setEmployees] = useState<EnrolledEmployee[]>(INITIAL_EMPLOYEES);
   const [shifts, setShifts] = useState<ShiftEntry[]>(INITIAL_SHIFTS);
   const [invoices, setInvoices] = useState<PaymentInvoice[]>(INITIAL_INVOICES);
+  const [kiosks, setKiosks] = useState<KioskDevice[]>(INITIAL_KIOSKS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
 
   // Load from localStorage on browser mount
   useEffect(() => {
@@ -77,6 +92,9 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const savedInvoices = localStorage.getItem('visagel_admin_invoices');
       if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
+
+      const savedKiosks = localStorage.getItem('visagel_admin_kiosks');
+      if (savedKiosks) setKiosks(JSON.parse(savedKiosks));
     } catch (e) {
       console.warn('Failed to load local admin cache', e);
     }
@@ -95,6 +113,15 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setInvoices(invs);
     try {
       localStorage.setItem('visagel_admin_invoices', JSON.stringify(invs));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const persistKiosks = (ksks: KioskDevice[]) => {
+    setKiosks(ksks);
+    try {
+      localStorage.setItem('visagel_admin_kiosks', JSON.stringify(ksks));
     } catch (e) {
       console.warn(e);
     }
@@ -185,23 +212,23 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateOrganization = async (id: string, updates: Partial<Organization>): Promise<boolean> => {
-    const updated = organizations.map((org) => (org.id === id || org.orgId === id ? { ...org, ...updates } : org));
+    const updated = organizations.map((org: Organization) => (org.id === id || org.orgId === id ? { ...org, ...updates } : org));
     persistOrgs(updated);
     return true;
   };
 
   const deleteOrganization = async (id: string): Promise<boolean> => {
-    const updated = organizations.filter((org) => org.id !== id && org.orgId !== id);
+    const updated = organizations.filter((org: Organization) => org.id !== id && org.orgId !== id);
     persistOrgs(updated);
     return true;
   };
 
   const getOrganizationById = (id: string) => {
-    return organizations.find((o) => o.id === id || o.orgId === id || o.slug === id);
+    return organizations.find((o: Organization) => o.id === id || o.orgId === id || o.slug === id);
   };
 
   const addOrgAdmin = async (orgId: string, admin: Omit<OrgAdmin, 'id' | 'createdAt'>): Promise<boolean> => {
-    const org = organizations.find((o) => o.id === orgId || o.orgId === orgId);
+    const org = organizations.find((o: Organization) => o.id === orgId || o.orgId === orgId);
     if (!org) return false;
 
     const newAdmin: OrgAdmin = {
@@ -210,7 +237,7 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       createdAt: new Date().toISOString(),
     };
 
-    const updatedOrgs = organizations.map((o) => {
+    const updatedOrgs = organizations.map((o: Organization) => {
       if (o.id === org.id) {
         return {
           ...o,
@@ -225,11 +252,11 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateOrgAdmin = async (orgId: string, adminId: string, updates: Partial<OrgAdmin>): Promise<boolean> => {
-    const updatedOrgs = organizations.map((o) => {
+    const updatedOrgs = organizations.map((o: Organization) => {
       if (o.id === orgId || o.orgId === orgId) {
         return {
           ...o,
-          admins: o.admins.map((adm) => (adm.id === adminId ? { ...adm, ...updates } : adm)),
+          admins: o.admins.map((adm: OrgAdmin) => (adm.id === adminId ? { ...adm, ...updates } : adm)),
         };
       }
       return o;
@@ -239,11 +266,11 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const deleteOrgAdmin = async (orgId: string, adminId: string): Promise<boolean> => {
-    const updatedOrgs = organizations.map((o) => {
+    const updatedOrgs = organizations.map((o: Organization) => {
       if (o.id === orgId || o.orgId === orgId) {
         return {
           ...o,
-          admins: o.admins.filter((adm) => adm.id !== adminId),
+          admins: o.admins.filter((adm: OrgAdmin) => adm.id !== adminId),
         };
       }
       return o;
@@ -258,10 +285,10 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     billingCycle: 'MONTHLY' | 'ANNUAL',
     paymentStatus: PaymentStatus
   ): Promise<boolean> => {
-    const planConfig = plans.find((p) => p.tier === planTier) || plans[0];
+    const planConfig = plans.find((p: PlanConfig) => p.tier === planTier) || plans[0];
     const price = billingCycle === 'ANNUAL' ? planConfig.pricePerMonth * 12 * 0.8 : planConfig.pricePerMonth;
 
-    const updatedOrgs = organizations.map((o) => {
+    const updatedOrgs = organizations.map((o: Organization) => {
       if (o.id === orgId || o.orgId === orgId) {
         return {
           ...o,
@@ -290,8 +317,28 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateInvoiceStatus = async (invoiceId: string, status: PaymentStatus): Promise<boolean> => {
-    const updated = invoices.map((inv) => (inv.id === invoiceId ? { ...inv, status } : inv));
+    const updated = invoices.map((inv: PaymentInvoice) => (inv.id === invoiceId ? { ...inv, status } : inv));
     persistInvoices(updated);
+    return true;
+  };
+
+  const addKioskDevice = async (kiosk: Omit<KioskDevice, 'id'>): Promise<boolean> => {
+    const newKiosk: KioskDevice = { ...kiosk, id: `ksk-${Date.now()}` };
+    const updated = [newKiosk, ...kiosks];
+    persistKiosks(updated);
+    return true;
+  };
+
+  const deleteKioskDevice = async (id: string): Promise<boolean> => {
+    const updated = kiosks.filter((k: KioskDevice) => k.id !== id);
+    persistKiosks(updated);
+    return true;
+  };
+
+  const addAuditLog = async (log: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<boolean> => {
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const newLog: AuditLogEntry = { ...log, id: `log-${Date.now()}`, timestamp: now };
+    setAuditLogs((prev: AuditLogEntry[]) => [newLog, ...prev]);
     return true;
   };
 
@@ -303,7 +350,7 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const deleteEmployeeRecord = async (id: string): Promise<boolean> => {
-    const updated = employees.filter((e) => e.id !== id);
+    const updated = employees.filter((e: EnrolledEmployee) => e.id !== id);
     persistEmployees(updated);
     return true;
   };
@@ -320,21 +367,25 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.removeItem('visagel_admin_attendance');
     localStorage.removeItem('visagel_admin_employees');
     localStorage.removeItem('visagel_admin_invoices');
+    localStorage.removeItem('visagel_admin_kiosks');
     setOrganizations(INITIAL_ORGANIZATIONS);
     setAttendance(INITIAL_ATTENDANCE);
     setEmployees(INITIAL_EMPLOYEES);
     setInvoices(INITIAL_INVOICES);
+    setKiosks(INITIAL_KIOSKS);
+    setAuditLogs(INITIAL_AUDIT_LOGS);
   };
 
   // Dashboard Aggregates
   const stats: DashboardStats = {
     totalOrganizations: organizations.length,
-    activeOrganizations: organizations.filter((o) => o.status === 'ACTIVE').length,
-    totalEnrolledEmployees: organizations.reduce((acc, o) => acc + (o.enrolledEmployeeCount || 0), 0) + employees.length,
-    totalPunchesToday: attendance.reduce((acc, a) => acc + a.punches.length, 0),
-    totalRevenueMonthly: organizations.reduce((acc, o) => acc + (o.planPrice || 0), 0),
-    pendingPaymentsCount: organizations.filter((o) => o.paymentStatus === 'PENDING').length,
-    overduePaymentsCount: organizations.filter((o) => o.paymentStatus === 'OVERDUE').length,
+    activeOrganizations: organizations.filter((o: Organization) => o.status === 'ACTIVE').length,
+    totalEnrolledEmployees: organizations.reduce((acc: number, o: Organization) => acc + (o.enrolledEmployeeCount || 0), 0) + employees.length,
+    totalPunchesToday: attendance.reduce((acc: number, a: EmployeeAttendance) => acc + a.punches.length, 0),
+    totalRevenueMonthly: organizations.reduce((acc: number, o: Organization) => acc + (o.planPrice || 0), 0),
+    pendingPaymentsCount: organizations.filter((o: Organization) => o.paymentStatus === 'PENDING').length,
+    overduePaymentsCount: organizations.filter((o: Organization) => o.paymentStatus === 'OVERDUE').length,
+    activeKiosksCount: kiosks.filter((k: KioskDevice) => k.status === 'ONLINE').length,
   };
 
   return (
@@ -346,6 +397,8 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         employees,
         shifts,
         invoices,
+        kiosks,
+        auditLogs,
         stats,
         addOrganization,
         updateOrganization,
@@ -357,6 +410,9 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateOrgSubscription,
         recordPaymentInvoice,
         updateInvoiceStatus,
+        addKioskDevice,
+        deleteKioskDevice,
+        addAuditLog,
         addEmployeeRecord,
         deleteEmployeeRecord,
         addAttendanceRecord,

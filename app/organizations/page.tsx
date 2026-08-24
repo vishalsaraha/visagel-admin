@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TablePagination,
 } from '@mui/material';
 import {
   Building2,
@@ -52,6 +53,10 @@ export default function OrganizationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [planFilter, setPlanFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Filter organizations
   const filteredOrgs = organizations.filter((org) => {
@@ -168,7 +173,9 @@ export default function OrganizationsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredOrgs.map((org) => (
+                {filteredOrgs
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((org: Organization) => (
                   <TableRow key={org.id} hover>
                     {/* Company */}
                     <TableCell>
@@ -280,6 +287,18 @@ export default function OrganizationsPage() {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredOrgs.length}
+            page={page}
+            onPageChange={(_e, p) => setPage(p)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 
