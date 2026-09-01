@@ -131,9 +131,10 @@ export default function SupportPage() {
   });
 
   // Client-specific kiosk and attendance data
-  const clientKiosks = kiosks.filter((k: KioskDevice) => k.orgId === (isClientView ? currentClientOrg.orgId : 'ORG-BRAN-001'));
-  const clientAttendance = attendance.filter((a: EmployeeAttendance) => a.orgId === (isClientView ? currentClientOrg.orgId : 'ORG-BRAN-001'));
+  const clientKiosks = kiosks.filter((k: KioskDevice) => k.orgId === (isClientView ? currentClientOrg.orgId : selectedOrgFilter === 'ALL' ? 'ORG-BRAN-001' : selectedOrgFilter));
+  const clientAttendance = attendance.filter((a: EmployeeAttendance) => a.orgId === (isClientView ? currentClientOrg.orgId : selectedOrgFilter === 'ALL' ? 'ORG-BRAN-001' : selectedOrgFilter));
 
+  // Scoped Admins for Client Directory
   const allAdmins = organizations.flatMap((org: Organization) =>
     org.admins.map((admin: OrgAdmin) => ({
       ...admin,
@@ -141,6 +142,12 @@ export default function SupportPage() {
       orgId: org.orgId,
     }))
   );
+
+  const filteredAdmins = allAdmins.filter((adm) => {
+    if (isClientView) return adm.orgId === currentClientOrg.orgId;
+    if (selectedOrgFilter !== 'ALL') return adm.orgId === selectedOrgFilter;
+    return true;
+  });
 
   const handleOpenTicket = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
@@ -727,18 +734,22 @@ export default function SupportPage() {
       {activeMainTab === 2 && (
         <Card variant="outlined" sx={{ bgcolor: '#FFFFFF' }}>
           <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 Client Directory & Direct Engineering Contact
               </Typography>
-              <Chip label={`${allAdmins.length} Client Admins`} size="small" sx={{ bgcolor: '#F1F5F9', color: '#475569', fontWeight: 600 }} />
+              <Chip
+                label={`${filteredAdmins.length} Client Admin(s) ${isClientView ? `(${currentClientOrg.name})` : selectedOrgFilter !== 'ALL' ? `(Org: ${selectedOrgFilter})` : '(All Organizations)'}`}
+                size="small"
+                sx={{ bgcolor: '#F1F5F9', color: '#475569', fontWeight: 700 }}
+              />
             </Box>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-              Connect with Organization Admins directly via Email or Phone.
+              Connect with Organization Admins directly via Email or Phone. Scoped based on your selected portal perspective.
             </Typography>
 
             <Grid container spacing={2}>
-              {allAdmins.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((admin) => (
+              {filteredAdmins.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((admin) => (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }} key={admin.id}>
                   <Box sx={{ p: 2, border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F8FAFC' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
@@ -747,7 +758,7 @@ export default function SupportPage() {
                           {admin.name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Building2 size={12} /> {admin.orgName}
+                          <Building2 size={12} color="#FF6900" /> {admin.orgName}
                         </Typography>
                       </Box>
                       <Chip label={admin.role === 'SUPER_ADMIN' ? 'Admin' : 'HR'} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }} />
@@ -785,7 +796,7 @@ export default function SupportPage() {
 
             <TablePagination
               component="div"
-              count={allAdmins.length}
+              count={filteredAdmins.length}
               page={page}
               onPageChange={(_e, p) => setPage(p)}
               rowsPerPage={rowsPerPage}

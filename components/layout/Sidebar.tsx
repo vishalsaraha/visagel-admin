@@ -37,7 +37,7 @@ const MENU_ITEMS = [
   { title: 'Organizations', path: '/organizations', icon: <Building2 size={18} />, devOnly: false },
   { title: 'Subscriptions', path: '/subscriptions', icon: <CreditCard size={18} />, devOnly: false },
   { title: 'Data Hub', path: '/data-inspector', icon: <Database size={18} />, devOnly: false },
-  { title: 'Developer Hub', path: '/developer', icon: <Code2 size={18} />, devOnly: true },
+  { title: 'Developer Hub', path: '/developer', icon: <Code2 size={18} />, devOnly: false },
   { title: 'Support', path: '/support', icon: <LifeBuoy size={18} />, devOnly: false },
   { title: 'Settings', path: '/settings', icon: <Sliders size={18} />, devOnly: false },
 ];

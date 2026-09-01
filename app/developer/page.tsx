@@ -262,6 +262,7 @@ export default function DeveloperHubPage() {
   const { organizations, attendance, employees, kiosks, invoices, tickets, auditLogs, shifts } = useAdminData();
 
   const [activeTab, setActiveTab] = useState(0);
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('ALL');
   const [selectedSnippet, setSelectedSnippet] = useState<keyof typeof CODE_SNIPPETS>('curl_punch');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [routeSearch, setRouteSearch] = useState('');
@@ -269,25 +270,38 @@ export default function DeveloperHubPage() {
   const [selectedCollection, setSelectedCollection] = useState('organizations');
   const [rawDataExpanded, setRawDataExpanded] = useState(false);
 
-  // Raw data collections map
+  // Active Organization object if filtered
+  const activeOrg = organizations.find((o) => o.orgId === selectedOrgFilter || o.id === selectedOrgFilter);
+
+  // Filtered collections strictly based on selected organization
+  const scopedOrgs = selectedOrgFilter === 'ALL' ? organizations : organizations.filter((o) => o.orgId === selectedOrgFilter || o.id === selectedOrgFilter);
+  const scopedAttendance = selectedOrgFilter === 'ALL' ? attendance : attendance.filter((a) => a.orgId === selectedOrgFilter);
+  const scopedEmployees = selectedOrgFilter === 'ALL' ? employees : employees.filter((e) => e.orgId === selectedOrgFilter);
+  const scopedKiosks = selectedOrgFilter === 'ALL' ? kiosks : kiosks.filter((k) => k.orgId === selectedOrgFilter);
+  const scopedInvoices = selectedOrgFilter === 'ALL' ? invoices : invoices.filter((i) => i.orgId === selectedOrgFilter);
+  const scopedTickets = selectedOrgFilter === 'ALL' ? tickets : tickets.filter((t) => t.orgId === selectedOrgFilter);
+  const scopedAuditLogs = selectedOrgFilter === 'ALL' ? auditLogs : auditLogs.filter((l) => l.targetOrgId === selectedOrgFilter);
+  const scopedShifts = shifts;
+
+  // Raw data collections map (Strictly scoped by organization)
   const dataCollections: Record<string, { label: string; data: unknown[]; count: number }> = {
-    organizations: { label: 'Organizations', data: organizations, count: organizations.length },
-    attendance: { label: 'Attendance Records', data: attendance, count: attendance.length },
-    employees: { label: 'Enrolled Employees', data: employees, count: employees.length },
-    kiosks: { label: 'Kiosk Devices', data: kiosks, count: kiosks.length },
-    invoices: { label: 'Payment Invoices', data: invoices, count: invoices.length },
-    tickets: { label: 'Support Tickets', data: tickets, count: tickets.length },
-    auditLogs: { label: 'Audit Logs', data: auditLogs, count: auditLogs.length },
-    shifts: { label: 'Shift Entries', data: shifts, count: shifts.length },
+    organizations: { label: 'Organizations', data: scopedOrgs, count: scopedOrgs.length },
+    attendance: { label: 'Attendance Records', data: scopedAttendance, count: scopedAttendance.length },
+    employees: { label: 'Enrolled Employees', data: scopedEmployees, count: scopedEmployees.length },
+    kiosks: { label: 'Kiosk Devices', data: scopedKiosks, count: scopedKiosks.length },
+    invoices: { label: 'Payment Invoices', data: scopedInvoices, count: scopedInvoices.length },
+    tickets: { label: 'Support Tickets', data: scopedTickets, count: scopedTickets.length },
+    auditLogs: { label: 'Audit Logs', data: scopedAuditLogs, count: scopedAuditLogs.length },
+    shifts: { label: 'Shift Entries', data: scopedShifts, count: scopedShifts.length },
   };
 
-  // Aggregate all API keys across all orgs
-  const allApiKeys: (OrgApiKey & { orgName: string; orgId: string })[] = organizations.flatMap((org: Organization) =>
+  // Aggregate all API keys strictly based on selected organization
+  const allApiKeys: (OrgApiKey & { orgName: string; orgId: string })[] = scopedOrgs.flatMap((org: Organization) =>
     (org.apiKeys || []).map((key: OrgApiKey) => ({ ...key, orgName: org.name, orgId: org.orgId }))
   );
 
-  // Aggregate all custom endpoints across all orgs
-  const allEndpoints: (OrgApiEndpoint & { orgName: string; orgId: string })[] = organizations.flatMap((org: Organization) =>
+  // Aggregate all custom endpoints strictly based on selected organization
+  const allEndpoints: (OrgApiEndpoint & { orgName: string; orgId: string })[] = scopedOrgs.flatMap((org: Organization) =>
     (org.customEndpoints || []).map((ep: OrgApiEndpoint) => ({ ...ep, orgName: org.name, orgId: org.orgId }))
   );
 
@@ -305,18 +319,68 @@ export default function DeveloperHubPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Page Header */}
-      <Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Developer Hub & API Control Panel
+      {/* Page Header & Global Organization Filter */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          gap: 2,
+          p: 2.5,
+          bgcolor: selectedOrgFilter === 'ALL' ? '#FFFFFF' : '#FFF7ED',
+          border: `1px solid ${selectedOrgFilter === 'ALL' ? '#E2E8F0' : '#FED7AA'}`,
+          borderRadius: 2,
+        }}
+      >
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Typography variant="h5" sx={{ fontWeight: 800 }}>
+              {selectedOrgFilter === 'ALL' ? 'Developer Hub & API Control Panel' : `${activeOrg?.name} Developer Portal`}
+            </Typography>
+            <Chip
+              label={selectedOrgFilter === 'ALL' ? 'ALL TENANTS' : `ORG: ${selectedOrgFilter}`}
+              size="small"
+              sx={{
+                bgcolor: selectedOrgFilter === 'ALL' ? '#2563EB' : '#EA580C',
+                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '0.65rem',
+                height: 22,
+              }}
+            />
+          </Box>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {selectedOrgFilter === 'ALL'
+              ? 'Global API route registry, cross-organization token management, and raw database schema audit.'
+              : `Strictly isolated API credentials, route throttles, biometric tokens, and raw collections for ${activeOrg?.name}.`}
           </Typography>
-          <Chip label="REST v2" size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700 }} />
-          <Chip label="WebSocket" size="small" sx={{ bgcolor: '#F0FDF4', color: '#16A34A', fontWeight: 700 }} />
         </Box>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Global API route registry, cross-organization token management, SDK integration samples, and real-time endpoint health monitoring.
-        </Typography>
+
+        {/* Multi-Tenant Organization Scoping Selector */}
+        <FormControl size="small" sx={{ minWidth: 260, bgcolor: '#FFFFFF' }}>
+          <InputLabel>Filter By Organization</InputLabel>
+          <Select
+            value={selectedOrgFilter}
+            label="Filter By Organization"
+            onChange={(e) => setSelectedOrgFilter(e.target.value)}
+          >
+            <MenuItem value="ALL">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Shield size={14} color="#2563EB" />
+                <strong>All Organizations (Global View)</strong>
+              </Box>
+            </MenuItem>
+            {organizations.map((org: Organization) => (
+              <MenuItem key={org.id} value={org.orgId}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Building2 size={14} color="#FF6900" />
+                  <span>{org.name} ({org.orgId})</span>
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Quick Stats */}

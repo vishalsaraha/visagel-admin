@@ -38,6 +38,9 @@ import {
   Smartphone,
   Copy,
   Users,
+  Mail,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAdminData } from '@/context/AdminDataContext';
@@ -177,7 +180,7 @@ export default function OrganizationsPage() {
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((org: Organization) => (
                   <TableRow key={org.id} hover>
-                    {/* Company */}
+                    {/* Company & Full Contact Info */}
                     <TableCell>
                       <Typography
                         variant="subtitle2"
@@ -186,9 +189,33 @@ export default function OrganizationsPage() {
                       >
                         {org.name}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        {org.contactPerson} • {org.contactEmail}
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                        Contact: {org.contactPerson}
                       </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Mail size={12} color="#2563EB" />
+                          <Typography variant="caption" sx={{ color: '#2563EB', fontFamily: 'monospace' }}>
+                            {org.contactEmail}
+                          </Typography>
+                        </Box>
+                        {org.contactPhone && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Phone size={12} color="#16A34A" />
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              {org.contactPhone}
+                            </Typography>
+                          </Box>
+                        )}
+                        {org.address && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <MapPin size={12} color="#94A3B8" />
+                            <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.68rem' }}>
+                              {org.address}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
                     </TableCell>
 
                     {/* Org ID */}

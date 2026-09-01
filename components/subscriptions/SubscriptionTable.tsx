@@ -63,6 +63,18 @@ export const SubscriptionTable: React.FC = () => {
   // Invoice Print Modal State
   const [selectedInvoice, setSelectedInvoice] = useState<PaymentInvoice | null>(null);
 
+  // Organization Scoping Filter
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('ALL');
+
+  // Filtered organizations and invoices strictly scoped by tenant
+  const filteredOrgs = selectedOrgFilter === 'ALL'
+    ? organizations
+    : organizations.filter((o: Organization) => o.orgId === selectedOrgFilter || o.id === selectedOrgFilter);
+
+  const filteredInvoices = selectedOrgFilter === 'ALL'
+    ? invoices
+    : invoices.filter((i: PaymentInvoice) => i.orgId === selectedOrgFilter);
+
   // Pagination state
   const [orgPage, setOrgPage] = useState(0);
   const [orgRowsPerPage, setOrgRowsPerPage] = useState(5);
@@ -90,10 +102,10 @@ export const SubscriptionTable: React.FC = () => {
 
   // Recharts Chart Data
   const planTierDistribution = [
-    { name: 'Starter', count: organizations.filter((o: Organization) => o.plan === 'STARTER').length, color: '#3B82F6' },
-    { name: 'Growth', count: organizations.filter((o: Organization) => o.plan === 'GROWTH').length, color: '#FF6900' },
-    { name: 'Enterprise', count: organizations.filter((o: Organization) => o.plan === 'ENTERPRISE').length, color: '#8B5CF6' },
-    { name: 'Unlimited', count: organizations.filter((o: Organization) => o.plan === 'UNLIMITED').length, color: '#10B981' },
+    { name: 'Starter', count: filteredOrgs.filter((o: Organization) => o.plan === 'STARTER').length, color: '#3B82F6' },
+    { name: 'Growth', count: filteredOrgs.filter((o: Organization) => o.plan === 'GROWTH').length, color: '#FF6900' },
+    { name: 'Enterprise', count: filteredOrgs.filter((o: Organization) => o.plan === 'ENTERPRISE').length, color: '#8B5CF6' },
+    { name: 'Unlimited', count: filteredOrgs.filter((o: Organization) => o.plan === 'UNLIMITED').length, color: '#10B981' },
   ];
 
   const revenueMonthlyTrend = [
@@ -101,12 +113,12 @@ export const SubscriptionTable: React.FC = () => {
     { month: 'May', revenue: 2450 },
     { month: 'Jun', revenue: 2900 },
     { month: 'Jul', revenue: 3400 },
-    { month: 'Aug', revenue: organizations.reduce((acc: number, o: Organization) => acc + (o.planPrice || 0), 0) },
+    { month: 'Aug', revenue: filteredOrgs.reduce((acc: number, o: Organization) => acc + (o.planPrice || 0), 0) },
   ];
 
   const exportInvoicesCSV = () => {
     const headers = ['Invoice #', 'Organization', 'Amount', 'Currency', 'Plan', 'Payment Method', 'Status', 'Due Date'];
-    const rows = invoices.map((inv: PaymentInvoice) => [
+    const rows = filteredInvoices.map((inv: PaymentInvoice) => [
       inv.invoiceNumber,
       `"${inv.orgName}"`,
       inv.amount,
@@ -129,6 +141,67 @@ export const SubscriptionTable: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+      {/* Top Organization Filter & Tenant Scoping Banner */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          gap: 2,
+          p: 2.5,
+          bgcolor: selectedOrgFilter === 'ALL' ? '#FFFFFF' : '#FFF7ED',
+          border: `1px solid ${selectedOrgFilter === 'ALL' ? '#E2E8F0' : '#FED7AA'}`,
+          borderRadius: 2,
+        }}
+      >
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              {selectedOrgFilter === 'ALL' ? 'Platform Billing & Subscriptions' : `${filteredOrgs[0]?.name || 'Organization'} Subscription Portal`}
+            </Typography>
+            <Chip
+              label={selectedOrgFilter === 'ALL' ? 'GLOBAL LEDGER' : `TENANT: ${selectedOrgFilter}`}
+              size="small"
+              sx={{
+                bgcolor: selectedOrgFilter === 'ALL' ? '#2563EB' : '#EA580C',
+                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '0.65rem',
+                height: 22,
+              }}
+            />
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {selectedOrgFilter === 'ALL'
+              ? 'Multi-tenant subscription tiers, device quota allocations, and payment invoice audits.'
+              : `Strictly scoped billing plan, device capacity, and payment invoice history for ${filteredOrgs[0]?.name}.`}
+          </Typography>
+        </Box>
+
+        <FormControl size="small" sx={{ minWidth: 260, bgcolor: '#FFFFFF' }}>
+          <InputLabel>Filter By Organization</InputLabel>
+          <Select
+            value={selectedOrgFilter}
+            label="Filter By Organization"
+            onChange={(e) => {
+              setSelectedOrgFilter(e.target.value);
+              setOrgPage(0);
+              setInvPage(0);
+            }}
+          >
+            <MenuItem value="ALL">
+              <strong>All Organizations (Global View)</strong>
+            </MenuItem>
+            {organizations.map((org: Organization) => (
+              <MenuItem key={org.id} value={org.orgId}>
+                {org.name} ({org.orgId})
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       {/* Visual Analytics Charts Section */}
       <Box
         sx={{
@@ -147,11 +220,11 @@ export const SubscriptionTable: React.FC = () => {
                   Monthly Recurring Revenue (MRR) Growth
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Total platform revenue performance over the last 5 months
+                  {selectedOrgFilter === 'ALL' ? 'Total platform revenue performance over the last 5 months' : `Subscription billing performance for ${filteredOrgs[0]?.name}`}
                 </Typography>
               </Box>
               <Chip
-                label={`$${organizations.reduce((acc: number, o: Organization) => acc + (o.planPrice || 0), 0)} / mo`}
+                label={`$${filteredOrgs.reduce((acc: number, o: Organization) => acc + (o.planPrice || 0), 0)} / mo`}
                 size="small"
                 sx={{ bgcolor: '#FFF7ED', color: '#FF6900', fontWeight: 700, border: '1px solid #FED7AA' }}
               />
@@ -159,31 +232,49 @@ export const SubscriptionTable: React.FC = () => {
             <Box sx={{ height: 180, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueMonthlyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <RechartsTooltip formatter={(value: any) => [`$${value}`, 'MRR Revenue']} />
-                  <Bar dataKey="revenue" fill="#FF6900" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} tickLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} tickFormatter={(val) => `$${val}`} />
+                  <RechartsTooltip
+                    formatter={(val) => [`$${val}`, 'MRR Revenue']}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                  />
+                  <Bar dataKey="revenue" fill="#FF6900" radius={[4, 4, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </Box>
           </CardContent>
         </Card>
 
-        {/* Subscription Plan Tier Breakdown */}
+        {/* Plan Tier Distribution */}
         <Card>
           <CardContent sx={{ p: 2.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PieIcon size={18} color="#6366F1" />
-                Tier Share
-              </Typography>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PieIcon size={18} color="#8B5CF6" />
+                  Plan Tier Distribution
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  Breakdown of tenant active subscription plans
+                </Typography>
+              </Box>
+              <Chip label={`${filteredOrgs.length} Tenants`} size="small" sx={{ bgcolor: '#F5F3FF', color: '#8B5CF6', fontWeight: 700 }} />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 170 }}>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 180 }}>
               <Box sx={{ width: 140, height: 140 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={planTierDistribution} dataKey="count" innerRadius={35} outerRadius={60} paddingAngle={4}>
+                    <Pie
+                      data={planTierDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={35}
+                      outerRadius={60}
+                      paddingAngle={3}
+                      dataKey="count"
+                    >
                       {planTierDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -242,7 +333,7 @@ export const SubscriptionTable: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {organizations
+                {filteredOrgs
                   .slice(orgPage * orgRowsPerPage, orgPage * orgRowsPerPage + orgRowsPerPage)
                   .map((org: Organization) => (
                   <TableRow key={org.id} hover>
@@ -250,7 +341,7 @@ export const SubscriptionTable: React.FC = () => {
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {org.name}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'primary.main', fontFamily: 'monospace' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
                         {org.orgId}
                       </Typography>
                     </TableCell>
@@ -258,20 +349,20 @@ export const SubscriptionTable: React.FC = () => {
                       <PlanBadge plan={org.plan} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {org.billingCycle}
+                      <Typography variant="body2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                        {org.billingCycle.toLowerCase()}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                        ${org.planPrice} / {org.billingCycle === 'ANNUAL' ? 'yr' : 'mo'}
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        ${org.planPrice}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {org.enrolledEmployeeCount} / {org.employeeQuota} Faces
+                        {org.enrolledEmployeeCount} / {org.employeeQuota}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                         {org.activeDeviceCount} / {org.deviceQuota} Devices
                       </Typography>
                     </TableCell>
@@ -279,7 +370,7 @@ export const SubscriptionTable: React.FC = () => {
                       <PaymentStatusBadge status={org.paymentStatus} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
                         {org.nextBillingDate}
                       </Typography>
                     </TableCell>
@@ -300,7 +391,7 @@ export const SubscriptionTable: React.FC = () => {
           </TableContainer>
           <TablePagination
             component="div"
-            count={organizations.length}
+            count={filteredOrgs.length}
             page={orgPage}
             onPageChange={(_e, p) => setOrgPage(p)}
             rowsPerPage={orgRowsPerPage}
@@ -343,28 +434,37 @@ export const SubscriptionTable: React.FC = () => {
                 <TableRow>
                   <TableCell>Invoice #</TableCell>
                   <TableCell>Organization</TableCell>
+                  <TableCell>Billing Tier</TableCell>
                   <TableCell>Amount</TableCell>
-                  <TableCell>Plan Tier</TableCell>
-                  <TableCell>Payment Method</TableCell>
-                  <TableCell>Due Date</TableCell>
+                  <TableCell>Payment Mode</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell align="right">Action & View</TableCell>
+                  <TableCell>Due Date</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {invoices
+                {filteredInvoices
                   .slice(invPage * invRowsPerPage, invPage * invRowsPerPage + invRowsPerPage)
                   .map((inv: PaymentInvoice) => (
                   <TableRow key={inv.id} hover>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563EB' }}>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
                         {inv.invoiceNumber}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        Date: {inv.paymentDate}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {inv.orgName}
                       </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+                        {inv.orgId}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <PlanBadge plan={inv.planTier} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 800 }}>
@@ -372,35 +472,38 @@ export const SubscriptionTable: React.FC = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <PlanBadge plan={inv.planTier} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {inv.paymentMethod} {inv.transactionRef ? `(${inv.transactionRef})` : ''}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {inv.dueDate}
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                        {inv.paymentMethod.replace('_', ' ')}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <PaymentStatusBadge status={inv.status} />
                     </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                        {inv.dueDate}
+                      </Typography>
+                    </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                         <Button
                           size="small"
-                          variant={inv.status === 'PAID' ? 'text' : 'contained'}
+                          variant="text"
+                          startIcon={<FileText size={14} />}
+                          onClick={() => setSelectedInvoice(inv)}
+                          sx={{ textTransform: 'none', fontWeight: 600 }}
+                        >
+                          View Receipt
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
                           color={inv.status === 'PAID' ? 'inherit' : 'success'}
                           onClick={() => handleToggleInvoicePaid(inv)}
-                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                          sx={{ textTransform: 'none', fontWeight: 600 }}
                         >
-                          {inv.status === 'PAID' ? 'Mark Unpaid' : 'Mark Paid'}
+                          {inv.status === 'PAID' ? 'Mark Pending' : 'Mark Paid'}
                         </Button>
-                        <IconButton size="small" onClick={() => setSelectedInvoice(inv)}>
-                          <FileText size={16} color="#6366F1" />
-                        </IconButton>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -410,7 +513,7 @@ export const SubscriptionTable: React.FC = () => {
           </TableContainer>
           <TablePagination
             component="div"
-            count={invoices.length}
+            count={filteredInvoices.length}
             page={invPage}
             onPageChange={(_e, p) => setInvPage(p)}
             rowsPerPage={invRowsPerPage}
