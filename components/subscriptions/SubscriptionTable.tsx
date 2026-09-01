@@ -482,10 +482,10 @@ export const SubscriptionTable: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#FF6900' }}>
-                  BRANZEPT TECHNOLOGIES
+                  VISAGEL CLOUD BIOMETRICS
                 </Typography>
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-                  Visagel Biometrics Cloud SaaS
+                  Face Attendance Enterprise SaaS (by Branzept)
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   GST/Tax ID: 29AAAAA0000A1Z5

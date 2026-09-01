@@ -38,6 +38,8 @@ import { useRouter } from 'next/navigation';
 import { useAdminData } from '@/context/AdminDataContext';
 import { OrgCredentialsCard } from '@/components/organizations/OrgCredentialsCard';
 import { OrgAdminList } from '@/components/organizations/OrgAdminList';
+import { TenantDatabaseIsolationCard } from '@/components/organizations/TenantDatabaseIsolationCard';
+import { OrgApiGatewayCard } from '@/components/organizations/OrgApiGatewayCard';
 import { PlanBadge, PaymentStatusBadge } from '@/components/organizations/PlanStatusBadge';
 import { OrgPlanTier, PaymentStatus, BillingCycle } from '@/types';
 
@@ -227,6 +229,12 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
           </CardContent>
         </Card>
       </Box>
+
+      {/* Multi-Tenant Database Storage & Isolation Architecture */}
+      <TenantDatabaseIsolationCard organization={organization} />
+
+      {/* Organization Scoped API Gateway & Rate Limit Tracking */}
+      <OrgApiGatewayCard organization={organization} />
 
       {/* Internal Organization Admins / HR Accounts Manager */}
       <OrgAdminList orgId={organization.id} admins={organization.admins} />

@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const { stats, organizations, kiosks } = useAdminData();
   const [openAddOrgModal, setOpenAddOrgModal] = useState(false);
   const [openHealthModal, setOpenHealthModal] = useState(false);
+  const [healthModalTab, setHealthModalTab] = useState(0);
   const [openKioskModal, setOpenKioskModal] = useState(false);
 
   // Table pagination state
@@ -51,7 +52,7 @@ export default function DashboardPage() {
 
   const kpiCards = [
     {
-      title: 'Branzept & Client Orgs',
+      title: 'Client Organizations',
       value: stats.totalOrganizations,
       subtitle: `${stats.activeOrganizations} active tenants`,
       icon: <Building2 size={20} color="#FF6900" />,
@@ -105,10 +106,10 @@ export default function DashboardPage() {
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
             <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Branzept Admin Console
+              Visagel Face Attendance Admin Panel
             </Typography>
             <Chip
-              label="Visagel Biometrics"
+              label="Cloud Biometrics"
               size="small"
               sx={{ bgcolor: '#FFF7ED', color: '#FF6900', fontWeight: 600, border: '1px solid #FED7AA' }}
             />
@@ -145,14 +146,17 @@ export default function DashboardPage() {
         }}
       >
         {[
-          { label: 'Database', value: 'MongoDB', sub: 'AWS Node-1 Online', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-          { label: 'API Server', value: 'Node.js/REST', sub: 'All endpoints healthy', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-          { label: 'Kiosk Network', value: `${activeKiosks} Active`, sub: `${organizations.length} orgs connected`, color: '#FF6900', bg: '#FFF7ED', border: '#FED7AA' },
-          { label: 'Server Uptime', value: '99.9%', sub: 'Last checked: just now', color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+          { label: 'Database', value: 'MongoDB', sub: 'AWS Node-1 Online', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', tabIndex: 0 },
+          { label: 'API Server', value: 'Node.js/REST', sub: 'All endpoints healthy', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', tabIndex: 1 },
+          { label: 'Kiosk Network', value: `${activeKiosks} Active`, sub: `${organizations.length} orgs connected`, color: '#FF6900', bg: '#FFF7ED', border: '#FED7AA', tabIndex: 2 },
+          { label: 'Server Uptime', value: '99.9%', sub: 'Last checked: just now', color: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', tabIndex: 3 },
         ].map((item) => (
-          <Tooltip key={item.label} title="Click to view detailed backend health diagnostics">
+          <Tooltip key={item.label} title={`Click to view detailed ${item.label} health diagnostics`}>
             <Card
-              onClick={() => setOpenHealthModal(true)}
+              onClick={() => {
+                setHealthModalTab(item.tabIndex);
+                setOpenHealthModal(true);
+              }}
               sx={{
                 cursor: 'pointer',
                 transition: 'all 0.18s ease-in-out',
@@ -440,7 +444,7 @@ export default function DashboardPage() {
 
       {/* Modals */}
       <OrgModal open={openAddOrgModal} onClose={() => setOpenAddOrgModal(false)} />
-      <BackendHealthModal open={openHealthModal} onClose={() => setOpenHealthModal(false)} />
+      <BackendHealthModal open={openHealthModal} onClose={() => setOpenHealthModal(false)} initialTab={healthModalTab} />
       <KioskManagementModal open={openKioskModal} onClose={() => setOpenKioskModal(false)} />
     </Box>
   );

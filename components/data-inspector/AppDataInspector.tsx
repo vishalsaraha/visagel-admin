@@ -203,7 +203,7 @@ export const AppDataInspector: React.FC = () => {
                 Data Privacy Restriction
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 450, mx: 'auto', mb: 2 }}>
-                As a Branzept Admin, you need explicit temporary permission to view biometric face models and attendance records for <strong>{selectedOrgData?.name}</strong>.
+                As a Visagel Super Admin, you need explicit temporary permission to view biometric face models and attendance records for <strong>{selectedOrgData?.name}</strong>.
               </Typography>
               <Button
                 variant="contained"

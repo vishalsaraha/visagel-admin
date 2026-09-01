@@ -13,6 +13,12 @@ import {
   PaymentStatus,
   KioskDevice,
   AuditLogEntry,
+  SupportTicket,
+  TicketMessage,
+  TicketStatus,
+  TenantDatabaseConfig,
+  OrgApiKey,
+  OrgApiEndpoint,
 } from '@/types';
 import {
   INITIAL_ORGANIZATIONS,
@@ -23,6 +29,7 @@ import {
   INITIAL_INVOICES,
   INITIAL_KIOSKS,
   INITIAL_AUDIT_LOGS,
+  INITIAL_TICKETS,
 } from './initialData';
 
 interface AdminDataContextType {
@@ -34,6 +41,7 @@ interface AdminDataContextType {
   invoices: PaymentInvoice[];
   kiosks: KioskDevice[];
   auditLogs: AuditLogEntry[];
+  tickets: SupportTicket[];
   stats: DashboardStats;
   
   // Organization operations
@@ -56,6 +64,17 @@ interface AdminDataContextType {
   addKioskDevice: (kiosk: Omit<KioskDevice, 'id'>) => Promise<boolean>;
   deleteKioskDevice: (id: string) => Promise<boolean>;
 
+  // Support Tickets
+  addSupportTicket: (ticket: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'messages' | 'slaStatus'> & { initialMessage?: string }) => Promise<SupportTicket>;
+  updateTicketStatus: (ticketId: string, status: TicketStatus) => Promise<boolean>;
+  addTicketMessage: (ticketId: string, message: Omit<TicketMessage, 'id' | 'timestamp'>) => Promise<boolean>;
+
+  // Organization Database & API Management
+  updateOrgDatabaseConfig: (orgId: string, config: TenantDatabaseConfig) => Promise<boolean>;
+  addOrgApiKey: (orgId: string, keyData: Omit<OrgApiKey, 'id' | 'createdAt' | 'keyPrefix'>) => Promise<OrgApiKey>;
+  revokeOrgApiKey: (orgId: string, keyId: string) => Promise<boolean>;
+  toggleOrgApiEndpoint: (orgId: string, endpointId: string, isEnabled: boolean) => Promise<boolean>;
+
   // Audit Logs
   addAuditLog: (log: Omit<AuditLogEntry, 'id' | 'timestamp'>) => Promise<boolean>;
 
@@ -77,6 +96,7 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [invoices, setInvoices] = useState<PaymentInvoice[]>(INITIAL_INVOICES);
   const [kiosks, setKiosks] = useState<KioskDevice[]>(INITIAL_KIOSKS);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
 
   // Load from localStorage on browser mount
   useEffect(() => {
@@ -95,6 +115,9 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const savedKiosks = localStorage.getItem('visagel_admin_kiosks');
       if (savedKiosks) setKiosks(JSON.parse(savedKiosks));
+
+      const savedTickets = localStorage.getItem('visagel_admin_tickets');
+      if (savedTickets) setTickets(JSON.parse(savedTickets));
     } catch (e) {
       console.warn('Failed to load local admin cache', e);
     }
@@ -342,6 +365,201 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true;
   };
 
+  const persistTickets = (tcks: SupportTicket[]) => {
+    setTickets(tcks);
+    try {
+      localStorage.setItem('visagel_admin_tickets', JSON.stringify(tcks));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const addSupportTicket = async (
+    ticket: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'messages' | 'slaStatus'> & { initialMessage?: string }
+  ): Promise<SupportTicket> => {
+    const orgCode = ticket.orgId.split('-')[1] || 'VIS';
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    const ticketNumber = `TCK-${orgCode}-${randNum}`;
+    const now = new Date().toISOString();
+
+    const initialMessages: TicketMessage[] = ticket.initialMessage
+      ? [
+          {
+            id: `msg-${Date.now()}`,
+            senderName: ticket.createdBy,
+            senderRole: ticket.createdByRole as any || 'CLIENT_ADMIN',
+            senderOrgName: ticket.orgName,
+            message: ticket.initialMessage,
+            timestamp: now,
+            isInternalNote: false,
+          },
+        ]
+      : [];
+
+    const newTicket: SupportTicket = {
+      ...ticket,
+      id: `tck-${Date.now()}`,
+      ticketNumber,
+      createdAt: now,
+      updatedAt: now,
+      slaStatus: 'WITHIN_SLA',
+      messages: initialMessages,
+    };
+
+    const updated = [newTicket, ...tickets];
+    persistTickets(updated);
+
+    // Also record an audit log
+    addAuditLog({
+      actor: ticket.createdBy,
+      actorRole: ticket.createdByRole,
+      action: 'Support Ticket Raised',
+      details: `Created ticket ${ticketNumber}: "${ticket.title}" with priority ${ticket.priority}`,
+      targetOrgId: ticket.orgId,
+      severity: ticket.priority === 'CRITICAL_URGENT' ? 'CRITICAL' : 'INFO',
+    });
+
+    return newTicket;
+  };
+
+  const updateTicketStatus = async (ticketId: string, status: TicketStatus): Promise<boolean> => {
+    const now = new Date().toISOString();
+    const updated = tickets.map((t) => {
+      if (t.id === ticketId) {
+        return {
+          ...t,
+          status,
+          updatedAt: now,
+          resolvedAt: status === 'RESOLVED' || status === 'CLOSED' ? now : t.resolvedAt,
+        };
+      }
+      return t;
+    });
+    persistTickets(updated);
+    return true;
+  };
+
+  const addTicketMessage = async (
+    ticketId: string,
+    message: Omit<TicketMessage, 'id' | 'timestamp'>
+  ): Promise<boolean> => {
+    const now = new Date().toISOString();
+    const newMsg: TicketMessage = {
+      ...message,
+      id: `msg-${Date.now()}`,
+      timestamp: now,
+    };
+
+    const updated = tickets.map((t) => {
+      if (t.id === ticketId) {
+        return {
+          ...t,
+          updatedAt: now,
+          messages: [...t.messages, newMsg],
+          status: message.senderRole === 'VISAGEL_ADMIN' && !message.isInternalNote ? ('AWAITING_CLIENT_RESPONSE' as TicketStatus) : t.status,
+        };
+      }
+      return t;
+    });
+    persistTickets(updated);
+    return true;
+  };
+
+  const updateOrgDatabaseConfig = async (orgId: string, config: TenantDatabaseConfig): Promise<boolean> => {
+    const updated = organizations.map((org) => {
+      if (org.id === orgId || org.orgId === orgId) {
+        return { ...org, databaseConfig: config };
+      }
+      return org;
+    });
+    persistOrgs(updated);
+
+    addAuditLog({
+      actor: 'Super Admin',
+      actorRole: 'SUPER_ADMIN',
+      action: 'Tenant Database Architecture Updated',
+      details: `Configured ${config.isolationMode} on DB: ${config.databaseName}`,
+      targetOrgId: orgId,
+      severity: 'INFO',
+    });
+    return true;
+  };
+
+  const addOrgApiKey = async (
+    orgId: string,
+    keyData: Omit<OrgApiKey, 'id' | 'createdAt' | 'keyPrefix'>
+  ): Promise<OrgApiKey> => {
+    const randHex = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const fullKeySecret = `vg_live_${randHex}`;
+    const keyPrefix = `${fullKeySecret.slice(0, 14)}...`;
+    const now = new Date().toISOString();
+
+    const newKey: OrgApiKey = {
+      ...keyData,
+      id: `key-${Date.now()}`,
+      keyPrefix,
+      fullKeySecret,
+      createdAt: now,
+      status: 'ACTIVE',
+      totalCalls24h: 0,
+    };
+
+    const updated = organizations.map((org) => {
+      if (org.id === orgId || org.orgId === orgId) {
+        const existingKeys = org.apiKeys || [];
+        return { ...org, apiKeys: [newKey, ...existingKeys] };
+      }
+      return org;
+    });
+    persistOrgs(updated);
+
+    addAuditLog({
+      actor: 'Super Admin',
+      actorRole: 'SUPER_ADMIN',
+      action: 'API Key Provisioned',
+      details: `Generated API Key "${newKey.name}" with scope ${newKey.scope}`,
+      targetOrgId: orgId,
+      severity: 'INFO',
+    });
+
+    return newKey;
+  };
+
+  const revokeOrgApiKey = async (orgId: string, keyId: string): Promise<boolean> => {
+    const updated = organizations.map((org) => {
+      if (org.id === orgId || org.orgId === orgId) {
+        const existingKeys = (org.apiKeys || []).map((k) => (k.id === keyId ? { ...k, status: 'REVOKED' as const } : k));
+        return { ...org, apiKeys: existingKeys };
+      }
+      return org;
+    });
+    persistOrgs(updated);
+
+    addAuditLog({
+      actor: 'Super Admin',
+      actorRole: 'SUPER_ADMIN',
+      action: 'API Key Revoked',
+      details: `Revoked API Key ID ${keyId}`,
+      targetOrgId: orgId,
+      severity: 'WARNING',
+    });
+    return true;
+  };
+
+  const toggleOrgApiEndpoint = async (orgId: string, endpointId: string, isEnabled: boolean): Promise<boolean> => {
+    const updated = organizations.map((org) => {
+      if (org.id === orgId || org.orgId === orgId) {
+        const existingEndpoints = (org.customEndpoints || []).map((ep) =>
+          ep.id === endpointId ? { ...ep, isEnabled } : ep
+        );
+        return { ...org, customEndpoints: existingEndpoints };
+      }
+      return org;
+    });
+    persistOrgs(updated);
+    return true;
+  };
+
   const addEmployeeRecord = async (emp: Omit<EnrolledEmployee, 'id'>): Promise<boolean> => {
     const newEmp: EnrolledEmployee = { ...emp, id: `emp-${Date.now()}` };
     const updated = [newEmp, ...employees];
@@ -368,12 +586,14 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.removeItem('visagel_admin_employees');
     localStorage.removeItem('visagel_admin_invoices');
     localStorage.removeItem('visagel_admin_kiosks');
+    localStorage.removeItem('visagel_admin_tickets');
     setOrganizations(INITIAL_ORGANIZATIONS);
     setAttendance(INITIAL_ATTENDANCE);
     setEmployees(INITIAL_EMPLOYEES);
     setInvoices(INITIAL_INVOICES);
     setKiosks(INITIAL_KIOSKS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
+    setTickets(INITIAL_TICKETS);
   };
 
   // Dashboard Aggregates
@@ -399,6 +619,7 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         invoices,
         kiosks,
         auditLogs,
+        tickets,
         stats,
         addOrganization,
         updateOrganization,
@@ -412,6 +633,13 @@ export const AdminDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateInvoiceStatus,
         addKioskDevice,
         deleteKioskDevice,
+        addSupportTicket,
+        updateTicketStatus,
+        addTicketMessage,
+        updateOrgDatabaseConfig,
+        addOrgApiKey,
+        revokeOrgApiKey,
+        toggleOrgApiEndpoint,
         addAuditLog,
         addEmployeeRecord,
         deleteEmployeeRecord,

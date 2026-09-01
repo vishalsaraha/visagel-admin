@@ -31,6 +31,49 @@ export interface PlanConfig {
   customFieldsAllowed: boolean;
 }
 
+export type DbIsolationMode = 'SHARED_INDEXED' | 'DEDICATED_SCHEMA' | 'ISOLATED_CLUSTER';
+
+export interface TenantDatabaseConfig {
+  isolationMode: DbIsolationMode;
+  clusterEndpoint?: string;
+  databaseName: string;
+  customConnectionString?: string; // Optional custom MongoDB URI (e.g. mongodb+srv://...)
+  collectionPrefix?: string;
+  vectorIndexName: string;
+  backupS3Bucket?: string;
+  readOnlyReplicaUri?: string;
+  maxPoolSize?: number;
+  sslEnabled?: boolean;
+  status?: 'CONNECTED' | 'DISCONNECTED' | 'PROVISIONING';
+  lastPingLatencyMs?: number;
+  totalStorageBytes?: number;
+}
+
+export interface OrgApiKey {
+  id: string;
+  name: string; // e.g. "Primary Attendance Mobile Gateway", "HR ERP Webhook"
+  keyPrefix: string; // e.g. "vg_live_89fa..."
+  fullKeySecret?: string;
+  scope: 'READ_ONLY' | 'READ_WRITE' | 'ADMIN_FULL' | 'KIOSK_STREAM';
+  rateLimitPerMin: number;
+  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  createdAt: string;
+  lastUsedAt?: string;
+  expiresAt?: string;
+  totalCalls24h?: number;
+}
+
+export interface OrgApiEndpoint {
+  id: string;
+  route: string; // e.g. "/api/v2/punch/verify"
+  method: 'POST' | 'GET' | 'PUT' | 'DELETE';
+  customTargetUrl?: string; // If tenant routes punch webhook directly to their ERP
+  rateLimit: number;
+  isEnabled: boolean;
+  avgLatencyMs: number;
+  successRate: string;
+}
+
 export interface Organization {
   id: string; // internal UUID or doc id
   orgId: string; // human credential ID like 'ORG-VIS-9821'
@@ -60,6 +103,9 @@ export interface Organization {
   notes?: string;
   createdAt: string;
   admins: OrgAdmin[];
+  databaseConfig?: TenantDatabaseConfig;
+  apiKeys?: OrgApiKey[];
+  customEndpoints?: OrgApiEndpoint[];
 }
 
 export interface PunchRecord {
@@ -160,5 +206,51 @@ export interface DashboardStats {
   pendingPaymentsCount: number;
   overduePaymentsCount: number;
   activeKiosksCount?: number;
+}
+
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL_URGENT';
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'AWAITING_CLIENT_RESPONSE' | 'RESOLVED' | 'CLOSED';
+
+export type TicketCategory =
+  | 'Hardware Kiosk & Terminal'
+  | 'Biometrics & AI Vector Sync'
+  | 'Subscription & Quota Plan'
+  | 'Employee Roster & Shifts'
+  | 'Network & API Integration'
+  | 'General IT Support';
+
+export interface TicketMessage {
+  id: string;
+  senderName: string;
+  senderRole: 'VISAGEL_ADMIN' | 'CLIENT_ADMIN' | 'SYSTEM_BOT';
+  senderOrgName: string;
+  message: string;
+  timestamp: string;
+  isInternalNote: boolean;
+  attachments?: string[];
+}
+
+export interface SupportTicket {
+  id: string; // e.g. TCK-2026-0812
+  ticketNumber: string;
+  orgId: string;
+  orgName: string;
+  title: string;
+  description: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  status: TicketStatus;
+  slaHours: number;
+  slaStatus: 'WITHIN_SLA' | 'AT_RISK' | 'BREACHED';
+  createdBy: string;
+  createdByRole: string;
+  assignedTo: string;
+  relatedDeviceId?: string;
+  isAutoFlagged?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  messages: TicketMessage[];
 }
 

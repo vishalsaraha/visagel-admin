@@ -138,7 +138,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onMobileToggle }) => {
 
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#0F172A', mr: 0.5, letterSpacing: '-0.02em' }}>
-                Branzept
+                Visagel
               </Typography>
 
               {/* HQ Live status */}
@@ -294,19 +294,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onMobileToggle }) => {
             >
               <Avatar
                 sx={{
-                  width: 28,
-                  height: 28,
+                  width: 32,
+                  height: 32,
                   bgcolor: '#FF6900',
                   color: '#FFF',
                   fontWeight: 700,
                   fontSize: '0.75rem',
                 }}
               >
-                BP
+                SA
               </Avatar>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, color: '#0F172A' }}>
-                  Branzept Admin
+                  Super Admin
                 </Typography>
               </Box>
             </Box>
